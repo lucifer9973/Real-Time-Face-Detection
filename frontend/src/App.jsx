@@ -16,6 +16,10 @@ function App() {
   const [processedImage, setProcessedImage] = useState("");
   const [boxes, setBoxes] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
+  const [uploadedImage, setUploadedImage] = useState("");
+  const [uploadedBoxes, setUploadedBoxes] = useState([]);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     return () => stopStream();
@@ -96,6 +100,42 @@ function App() {
     setRunning(false);
   };
 
+  const uploadPhoto = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setUploadMessage("");
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append("image", file);
+
+      const response = await fetch(`${API_BASE}/stream/upload-image`, {
+        method: "POST",
+        body,
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        const detail = payload?.detail || "Failed to process uploaded image.";
+        throw new Error(detail);
+      }
+
+      setUploadedImage(`data:image/jpeg;base64,${payload.image_base64}`);
+      setUploadedBoxes(payload.rois || []);
+      setUploadMessage(payload.message || "Face detection finished for uploaded image.");
+    } catch (err) {
+      setError(err.message || "Failed to upload image.");
+      setUploadedImage("");
+      setUploadedBoxes([]);
+      setUploadMessage("");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
   return (
     <main className="container">
       <h1>Real-Time Face Detection</h1>
@@ -108,6 +148,16 @@ function App() {
         <button onClick={stopStream} disabled={!running}>
           Stop
         </button>
+        <label className="upload-btn">
+          {uploading ? "Uploading..." : "Upload Photo"}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={uploadPhoto}
+            disabled={uploading}
+            className="hidden-input"
+          />
+        </label>
       </div>
 
       {error ? <p className="error">{error}</p> : null}
@@ -133,6 +183,15 @@ function App() {
           {statusMessage ? <p className="muted">{statusMessage}</p> : null}
         </div>
       </section>
+
+      {uploadedImage ? (
+        <section className="upload-result">
+          <h3>Uploaded Photo Result</h3>
+          <img src={uploadedImage} alt="uploaded result" className="panel" />
+          <p className="muted">Detected faces: {uploadedBoxes.length}</p>
+          {uploadMessage ? <p className="muted">{uploadMessage}</p> : null}
+        </section>
+      ) : null}
 
       <canvas ref={canvasRef} className="hidden" />
     </main>

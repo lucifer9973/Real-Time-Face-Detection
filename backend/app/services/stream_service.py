@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.repositories.roi_repository import ROIRepository
-from app.schemas.stream import FrameMessage, ProcessedFrameResponse
+from app.schemas.stream import FrameMessage, ProcessedFrameResponse, UploadedImageResponse
 from app.services.face_detection import FaceDetectionError, FaceDetectorService
 
 
@@ -45,3 +45,16 @@ class StreamService:
             raise StreamServiceError(str(exc)) from exc
         except SQLAlchemyError as exc:
             raise StreamServiceError("Database operation failed.") from exc
+
+    def process_uploaded_image(self, image_base64: str) -> UploadedImageResponse:
+        try:
+            processed_b64, boxes = self.detector.detect_and_draw(
+                image_base64, self.settings.max_frame_bytes
+            )
+            return UploadedImageResponse(
+                image_base64=processed_b64,
+                rois=boxes,
+                message=None if boxes else "No face detected in this image.",
+            )
+        except FaceDetectionError as exc:
+            raise StreamServiceError(str(exc)) from exc

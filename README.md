@@ -231,8 +231,6 @@ Validation performed:
 
 ## Screenshot (recommended for evaluation)
 
-Add a real screenshot of the running UI (video + bounding box), then place it at `docs/screenshot.png` and include:
+Use this screenshot in the summary:
 
-```markdown
-![Face detection UI](docs/screenshot.png)
-```
+<img src="docs/screenshot.png" alt="Face detection UI" />

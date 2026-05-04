@@ -30,3 +30,9 @@ class ProcessedFrameResponse(BaseModel):
     image_base64: str
     rois: list[BoundingBox]
     message: str | None = None
+
+
+class UploadedImageResponse(BaseModel):
+    image_base64: str
+    rois: list[BoundingBox]
+    message: str | None = None

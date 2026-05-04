@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
+import base64
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from time import monotonic
 
 from app.core.config import Settings, get_settings
 from app.db.session import SessionLocal
-from app.schemas.stream import FrameMessage, StreamStartRequest, StreamStartResponse
+from app.schemas.stream import (
+    FrameMessage,
+    StreamStartRequest,
+    StreamStartResponse,
+    UploadedImageResponse,
+)
 from app.services.face_detection import FaceDetectorService
 from app.services.stream_service import StreamService, StreamServiceError
 
@@ -25,6 +32,22 @@ def start_stream(
 ) -> StreamStartResponse:
     session_id = service.start_stream()
     return StreamStartResponse(status="started", session_id=session_id)
+
+
+@router.post("/upload-image", response_model=UploadedImageResponse)
+async def upload_image(
+    image: UploadFile = File(...),
+    service: StreamService = Depends(get_stream_service),
+) -> UploadedImageResponse:
+    if not image.content_type or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed.")
+
+    image_bytes = await image.read()
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    try:
+        return service.process_uploaded_image(image_base64)
+    except StreamServiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.websocket("")
